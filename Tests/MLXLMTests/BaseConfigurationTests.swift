@@ -67,4 +67,29 @@ public class BaseConfigurationTests: XCTestCase {
             .init(groupSize: 64, bits: 4))
     }
 
+    func testQuantizationConfigOverridesConflictingQuantization() throws {
+        let json =
+            """
+            {
+                "model_type": "Test",
+                "quantization": {
+                    "group_size": 64,
+                    "bits": 4,
+                    "model.embed_tokens": false
+                },
+                "quantization_config": {
+                    "group_size": 64,
+                    "bits": 2
+                }
+            }
+            """
+
+        let config = try JSONDecoder().decode(
+            BaseConfiguration.self, from: json.data(using: .utf8)!)
+
+        XCTAssertEqual(
+            config.perLayerQuantization?.quantization(layer: "x"), .init(groupSize: 64, bits: 2))
+        XCTAssertNil(config.perLayerQuantization?.quantization(layer: "model.embed_tokens"))
+    }
+
 }

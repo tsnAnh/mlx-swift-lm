@@ -120,6 +120,11 @@ public struct BaseConfiguration: Codable, Sendable {
         var quantization: Quantization
         var perLayerQuantization: PerLayerQuantization
 
+        init(quantization: Quantization, perLayerQuantization: PerLayerQuantization) {
+            self.quantization = quantization
+            self.perLayerQuantization = perLayerQuantization
+        }
+
         /// A custom CodingKey used to iterate over arbitrary layer names in JSON.
         internal struct _DictionaryCodingKey: CodingKey {
             internal let stringValue: String
@@ -205,6 +210,38 @@ public struct BaseConfiguration: Codable, Sendable {
     enum CodingKeys: String, CodingKey {
         case modelType = "model_type"
         case quantizationContainer = "quantization"
+        case quantizationConfigContainer = "quantization_config"
         case eosTokenIds = "eos_token_id"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.modelType = try container.decode(String.self, forKey: .modelType)
+        self.eosTokenIds = try container.decodeIfPresent(IntOrIntArray.self, forKey: .eosTokenIds)
+
+        let quantization = try? container.decode(
+            QuantizationContainer.self, forKey: .quantizationContainer)
+        let quantizationConfig = try? container.decode(
+            QuantizationContainer.self, forKey: .quantizationConfigContainer)
+
+        if let quantization, let quantizationConfig,
+           quantization.quantization != quantizationConfig.quantization {
+            self.quantizationContainer = QuantizationContainer(
+                quantization: quantizationConfig.quantization,
+                perLayerQuantization: PerLayerQuantization(
+                    quantization: quantizationConfig.quantization,
+                    perLayerQuantization: quantization.perLayerQuantization.perLayerQuantization
+                )
+            )
+        } else {
+            self.quantizationContainer = quantization ?? quantizationConfig
+        }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(modelType, forKey: .modelType)
+        try container.encodeIfPresent(quantizationContainer, forKey: .quantizationContainer)
+        try container.encodeIfPresent(eosTokenIds, forKey: .eosTokenIds)
     }
 }
