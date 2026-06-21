@@ -1001,7 +1001,7 @@ public class SwitchLinear: Module, Quantizable {
         self.outputDims = outputDims
         self.numExperts = numExperts
 
-        self._weight.wrappedValue = MLXArray.zeros([numExperts, outputDims, inputDims], type: Float16.self)
+        self._weight.wrappedValue = MLXArray.zeros([numExperts, outputDims, inputDims]).asType(.float16)
 
         if bias {
             self._bias.wrappedValue = MLXArray.zeros([numExperts, outputDims])
@@ -1701,4 +1701,3 @@ public final class SSDStreamMetrics: @unchecked Sendable {
         }
     }
 }
-
